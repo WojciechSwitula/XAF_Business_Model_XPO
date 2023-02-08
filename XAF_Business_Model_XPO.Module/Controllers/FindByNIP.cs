@@ -66,9 +66,9 @@ namespace XAF_Business_Model_XPO.Module.Controllers
                 var currentcustomer = (Customer)View.CurrentObject;
                 currentcustomer.Street = paramValue;
                 
-                string url = "https://wl-api.mf.gov.pl/api/search/nip/" + paramValue + "?date=" + DateTime.Now.ToString("yyyy-MM-dd");
+                string uri = "https://wl-api.mf.gov.pl/api/search/nip/" + paramValue + "?date=" + DateTime.Now.ToString("yyyy-MM-dd");
                
-                WebRequest requestObjectGet = WebRequest.Create(url);
+                var requestObjectGet = WebRequest.Create(uri);
                 requestObjectGet.Method = "GET";
                 HttpWebResponse responseObjectGet = null;
                
