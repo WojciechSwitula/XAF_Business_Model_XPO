@@ -1,4 +1,6 @@
-﻿using DevExpress.Data.Filtering;
+﻿using DevExpress.CodeParser;
+using DevExpress.Data.Filtering;
+using DevExpress.DataAccess.Native.Json;
 using DevExpress.DataAccess.Native.Web;
 using DevExpress.ExpressApp;
 using DevExpress.ExpressApp.Actions;
@@ -13,14 +15,18 @@ using DevExpress.Persistent.BaseImpl;
 using DevExpress.Persistent.Validation;
 using DevExpress.XtraPrinting;
 using MySolution.Module.BusinessObjects;
+using Newtonsoft.Json;
 using SimpleProjectManager.Module.BusinessObjects;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using static DevExpress.Office.Utils.HdcOriginModifier;
 
 namespace XAF_Business_Model_XPO.Module.Controllers
 {
@@ -52,35 +58,49 @@ namespace XAF_Business_Model_XPO.Module.Controllers
         {
             string paramValue = e.ParameterCurrentValue as string;
 
+
+
             if (paramValue.All(char.IsDigit) == true && paramValue.Length == 10)
             {
-                string response;
-               // API(paramValue);
+
                 var currentcustomer = (Customer)View.CurrentObject;
                 currentcustomer.Street = paramValue;
+                
+                string url = "https://wl-api.mf.gov.pl/api/search/nip/" + paramValue + "?date=" + DateTime.Now.ToString("yyyy-MM-dd");
+               
+                WebRequest requestObjectGet = WebRequest.Create(url);
+                requestObjectGet.Method = "GET";
+                HttpWebResponse responseObjectGet = null;
+               
+                    responseObjectGet = (HttpWebResponse)requestObjectGet.GetResponse();
 
+                    string responsestr = null;
+                    using (Stream stream = responseObjectGet.GetResponseStream())
+                    {
+                        StreamReader sr = new StreamReader(stream);
+                        responsestr = sr.ReadToEnd();
+                        sr.Close();
+                    }
+                    Console.WriteLine(responsestr);
+                
+                var companyModel = JsonConvert.DeserializeObject<CompanyModel>(responsestr);
+                
+                Console.WriteLine(companyModel.result.subject.name.ToString());
+                currentcustomer.CustomerName= companyModel.result.subject.name;
+                currentcustomer.VatNumber = companyModel.result.subject.nip;
+                currentcustomer.Regon = companyModel.result.subject.regon;
+                currentcustomer.NumberInRegisterOfRecords = companyModel.result.subject.krs;
+                //currentcustomer.Street = companyModel.result.subject.workingAddress.Substring(0, companyModel.result.subject.workingAddress.IndexOf(",", StringComparison.Ordinal));
+                string[] customerAddress = companyModel.result.subject.workingAddress.Split(",");
+                currentcustomer.Street = customerAddress[0];
+                currentcustomer.PostalCode = customerAddress[1].Substring(1, 7);
+                currentcustomer.City = customerAddress[1].Substring(8, customerAddress[1].Length - 8);
+               
+                
             }
-
-
+                
         }
-        
-       
-        /*
-        static async void API(string NIP)
-        {
-            HttpClient httpClient = new HttpClient();
 
-            string requestAddress = "https://wl-api.mf.gov.pl//api/search/nip/" + NIP + "?date=" + DateTime.Now.Date.ToString();
-
-            string response = await httpClient.GetStringAsync(requestAddress);
-            Console.WriteLine("https://wl-api.mf.gov.pl//api/search/nip/" + NIP + "?date=" + DateTime.Now.ToString("yyyy-MM-dd"));
-           
-          
-            return response;
-
-        }
-        */
-       
         protected override void OnActivated()
         {
             base.OnActivated();
